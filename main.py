@@ -1,12 +1,12 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, UploadFile, File, HTTPException, Request
 from pydantic import BaseModel
 import os
-from dotenv import load_dotenv
 from transriber import transcribe_a, summarize_transcript
-
-load_dotenv()
+from fastapi.templating import Jinja2Templates
 
 app = FastAPI()
+
+templates = Jinja2Templates(directory="templates")
 
 class TranscriptionResult(BaseModel):
     summary: str
@@ -27,13 +27,13 @@ async def transcribe_audio(file: UploadFile = File(...)):
 
     try:
         # transcribe the audio file
-        transcript = transcribe_a(file.file).text
+        transcript = transcribe_a(file.file)
         # summarize the transcript
-        summary = summarize_transcript(transcript)
-        return TranscriptionResult(summary=summary)
+        # summary = summarize_transcript(transcript)
+        return TranscriptionResult(summary=transcript["srt"])
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/")
-async def root():
-    return {"message": "Hello World"}
+async def root(request: Request):
+    return templates.TemplateResponse("index.html", {"request": request})
